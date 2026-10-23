@@ -1,0 +1,4 @@
+__pycache__/
+*.pyc
+kotlin/build/
+kotlin/.gradle/
