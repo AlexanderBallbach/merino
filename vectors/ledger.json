@@ -1,0 +1,66 @@
+{
+ "server_seed": "0707070707070707070707070707070707070707070707070707070707070707",
+ "server_pub": "6kpsY-KcUgq-9VB7Ey7F-ZVHdq6-vnuSQh7qaRRG0iw",
+ "receipts": [
+  {
+   "entry": {
+    "seq": 1,
+    "prev": "0000000000000000000000000000000000000000000000000000000000000000",
+    "kind": "report",
+    "subject": "6e340b9cffb37a989ca544e6bb780a2c78901d3fb33738768511a30617afa01d",
+    "t": 29833330,
+    "actor": "key"
+   },
+   "hash": "29f46e8e6f8db41b3c74aec184806516764b7934ac88d6fec36de23b7a46f74f",
+   "sig": "uYqed74LvxzbJTDbeI3BtZwA8CFkJWKX4cNexV8pu3j1h8mcyDbBkRHwo-fd5z2YFKAnq5Q1aSoozv5nmUsTBg"
+  },
+  {
+   "entry": {
+    "seq": 2,
+    "prev": "29f46e8e6f8db41b3c74aec184806516764b7934ac88d6fec36de23b7a46f74f",
+    "kind": "flag",
+    "subject": "4bf5122f344554c53bde2ebb8cd2b7e3d1600ad631c385a5d7cce23c7785459a",
+    "t": 29833335,
+    "actor": "key"
+   },
+   "hash": "ca631b0e1893af1cd914a91f1b3192de520737e5db57c56dd37515a764c77a4e",
+   "sig": "TGimNv70f4QbG4onyauA_0fgrKAv0MG9pA2pqTXDy6k4C_GjhzifJ8z71TZsKQ394vszW_gVL7iLbZtkRxYTAg"
+  },
+  {
+   "entry": {
+    "seq": 3,
+    "prev": "ca631b0e1893af1cd914a91f1b3192de520737e5db57c56dd37515a764c77a4e",
+    "kind": "hide",
+    "subject": "dbc1b4c900ffe48d575b5da5c638040125f65db0fe3e24494b76ea986457d986",
+    "t": 29833340,
+    "actor": "sys:flags"
+   },
+   "hash": "c6a457defee3c4f1b8ec96ada8205c04b00a4e971b916eca2c0cdf4bdfba5516",
+   "sig": "3fgG-gkHMJ7M3u8321k2PE8WsVrLo2xMeB0xbhuFm4YnzSlx3gUKelkds_tTYr1vU-8Mti1HvNy2xRnUVvM4CQ"
+  },
+  {
+   "entry": {
+    "seq": 4,
+    "prev": "c6a457defee3c4f1b8ec96ada8205c04b00a4e971b916eca2c0cdf4bdfba5516",
+    "kind": "unhide",
+    "subject": "084fed08b978af4d7d196a7446a86b58009e636b611db16211b65a9aadff29c5",
+    "t": 29833345,
+    "actor": "op:andrew"
+   },
+   "hash": "c8562c26d0f9daa8b45793931ef7d307053705cd688d314307dd75f156a99d9b",
+   "sig": "EGLEyEePLWbPSn7dLvZ9KKLLwKkHWum7FM5Rq2u0rtO9lSCgD9XBlNhSnky4XVGIW_VLcDoso1IL3Eyg7084CA"
+  },
+  {
+   "entry": {
+    "seq": 5,
+    "prev": "c8562c26d0f9daa8b45793931ef7d307053705cd688d314307dd75f156a99d9b",
+    "kind": "delete",
+    "subject": "e52d9c508c502347344d8c07ad91cbd6068afc75ff6292f062a09ca381c89e71",
+    "t": 29833350,
+    "actor": "key"
+   },
+   "hash": "1cbb1d8cd5db192047fac497cf0382c8b5b9e8aaf96f552a6c8dfbb70fa0013c",
+   "sig": "EUy2GZFWEHzTKP5aMHYCzf3UoNoWGUTJQ-RcYpUxJXc2o57vrraz1eu0inybBi7MAkeKqGG5zrTXfKNONCc4AA"
+  }
+ ]
+}

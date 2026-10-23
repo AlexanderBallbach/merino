@@ -1,0 +1,72 @@
+[
+ {
+  "value": {
+   "b": 1,
+   "a": [
+    true,
+    false,
+    null,
+    0,
+    9007199254740991
+   ]
+  },
+  "c14n": "{\"a\":[true,false,null,0,9007199254740991],\"b\":1}"
+ },
+ {
+  "value": {
+   "s": "quote\" back\\ nl\n tab\t unié emoji🌪 ctl\u001f del"
+  },
+  "c14n": "{\"s\":\"quote\\\" back\\\\ nl\\u000a tab\\u0009 unié emoji🌪 ctl\\u001f del\"}"
+ },
+ {
+  "value": [],
+  "c14n": "[]"
+ },
+ {
+  "value": {},
+  "c14n": "{}"
+ },
+ {
+  "value": "",
+  "c14n": "\"\""
+ },
+ {
+  "value": -9007199254740991,
+  "c14n": "-9007199254740991"
+ },
+ {
+  "value": {
+   "realm": "liftcharge",
+   "geo": {
+    "type": "point",
+    "p": [
+     44982372,
+     -93209765
+    ],
+    "prec": 1000
+   }
+  },
+  "c14n": "{\"geo\":{\"p\":[44982372,-93209765],\"prec\":1000,\"type\":\"point\"},\"realm\":\"liftcharge\"}"
+ },
+ {
+  "reject": 1.5
+ },
+ {
+  "reject": {
+   "A": 1
+  }
+ },
+ {
+  "reject": {
+   "": 1
+  }
+ },
+ {
+  "reject": 9007199254740992
+ },
+ {
+  "reject": {
+   "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa": 1
+  }
+ }
+]

@@ -1,0 +1,34 @@
+{
+ "seed": "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f",
+ "env": {
+  "v": 1,
+  "realm": "liftcharge",
+  "kind": "report",
+  "nonce": "AAAAAAAAAAAAAAAAAAAAAA",
+  "t": 29833330,
+  "geo": {
+   "type": "point",
+   "p": [
+    44982372,
+    -93209765
+   ],
+   "prec": 1000
+  },
+  "body": {
+   "type": "Hail",
+   "magnitude": "1.00 in",
+   "notes": "Pea to marble é"
+  },
+  "media": [
+   {
+    "sha256": "abababababababababababababababababababababababababababababababab",
+    "mime": "image/jpeg",
+    "bytes": 1234
+   }
+  ],
+  "key": "A6EHv_POEL4dcN0Y50vAmWfk1jCbpQ1fHdyGZBJVMbg"
+ },
+ "c14n": "{\"body\":{\"magnitude\":\"1.00 in\",\"notes\":\"Pea to marble é\",\"type\":\"Hail\"},\"geo\":{\"p\":[44982372,-93209765],\"prec\":1000,\"type\":\"point\"},\"key\":\"A6EHv_POEL4dcN0Y50vAmWfk1jCbpQ1fHdyGZBJVMbg\",\"kind\":\"report\",\"media\":[{\"bytes\":1234,\"mime\":\"image/jpeg\",\"sha256\":\"abababababababababababababababababababababababababababababababab\"}],\"nonce\":\"AAAAAAAAAAAAAAAAAAAAAA\",\"realm\":\"liftcharge\",\"t\":29833330,\"v\":1}",
+ "hash": "f383100b2821729e491bb7d76c6b0a228c1112a0be3863a85ce78c4ed9622937",
+ "sig": "FLDNbp7mEaJQBb2cjvGLObA2DGvTQMueoCDsnBC1e0Yc0y1EK9Ptdgp-XajEzN4-1cOoI9cXT3RNmA-zmWrUBA"
+}
