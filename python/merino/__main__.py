@@ -5,10 +5,14 @@
     python3 -m merino purge   --db D --media M --keys K   # retention; run daily from a timer
     python3 -m merino moderate --db D --media M --keys K HASH hide|unhide|delete OPERATOR
     python3 -m merino audit   URL REALM                   # fetch a server's ledger and check every link + signature
+    python3 -m merino pg-sign --keys K --realm R -- PSQL_ARGS...
+                                                          # sign merino.ledger rows in Postgres (sql/merino.sql);
+                                                          # the realm key never enters the database
 """
 import argparse
 import json
 import os
+import subprocess
 import sys
 import urllib.request
 
@@ -52,6 +56,10 @@ def main(argv=None):
     au = sub.add_parser("audit")
     au.add_argument("url")
     au.add_argument("realm")
+    pg = sub.add_parser("pg-sign")
+    pg.add_argument("--keys", required=True)
+    pg.add_argument("--realm", required=True)
+    pg.add_argument("psql", nargs="+", help="psql command line, e.g. psql -h host -U user db")
     a = p.parse_args(argv)
 
     if a.cmd == "keygen":
@@ -83,6 +91,42 @@ def main(argv=None):
         ok = head["head"] is None and n == 0 or head["head"]["hash"] == prev
         print("ok" if ok else "HEAD MISMATCH", n, "entries, head", prev)
         return 0 if ok else 1
+    elif a.cmd == "pg-sign":
+        return pg_sign(a)
+
+
+def pg_sign(a):
+    """Sign unsigned merino.ledger rows. Every row from seq 1 is re-hashed and its link checked first, so a
+    tampered or forked chain is refused rather than signed: a signature then vouches for the whole history."""
+    seed = seeds(a.keys, [a.realm])[a.realm]
+
+    def psql(sql):
+        r = subprocess.run(a.psql + ["-X", "-q", "-At", "-v", "ON_ERROR_STOP=1"], input=sql, text=True,
+                           capture_output=True)
+        if r.returncode:
+            sys.exit(r.stderr.strip())
+        return r.stdout
+
+    lit = "'" + a.realm.replace("'", "''") + "'"
+    out = psql("select coalesce(json_agg(json_build_object('seq',seq,'prev',prev,'kind',kind,'subject',subject,"
+               "'t',t,'actor',actor,'hash',hash,'sig',sig) order by seq), '[]') from merino.ledger where realm=%s;" % lit)
+    prev, todo = ledger.ZERO, []
+    for i, r in enumerate(json.loads(out)):
+        e = {k: r[k] for k in ("seq", "prev", "kind", "subject", "t", "actor")}
+        if e["seq"] != i + 1 or e["prev"] != prev or ledger.entry_hash(e) != r["hash"]:
+            print("REFUSED: chain broken at seq", e["seq"])
+            return 1
+        if r["sig"] is None:
+            todo.append((e["seq"], b64u(ed25519.sign(seed, b"merino-ledger/1\n" + bytes.fromhex(r["hash"])))))
+        elif not ledger.verify_receipt(ed25519.public_key(seed), {"entry": e, "hash": r["hash"], "sig": r["sig"]}):
+            print("REFUSED: bad existing signature at seq", e["seq"])
+            return 1
+        prev = r["hash"]
+    if todo:
+        psql("begin;\n" + "".join("update merino.ledger set sig='%s' where realm=%s and seq=%d and sig is null;\n"
+                                   % (sig, lit, seq) for seq, sig in todo) + "commit;\n")
+    print("signed", len(todo))
+    return 0
 
 
 if __name__ == "__main__":

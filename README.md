@@ -14,7 +14,8 @@ subpoenas; avoid data brokers. See `SPEC.md`.
 | `SPEC.md` | The protocol: c14n, grid, paths, time, media, envelopes, ledger, retention |
 | `python/merino` | Reference engine + SQLite server + stdlib HTTP service + CLI (no dependencies; uses `cryptography` for speed if present) |
 | `kotlin/` | Pure-Kotlin client (JVM/Android): reduction, media cleaning, signing |
-| `sql/merino.sql` | Postgres port of the grid, checks and ledger (for Supabase) |
+| `sql/merino.sql` | Postgres (>= 13) port: `merino.snap`, `merino.check_geo`, `merino.c14n`, append-only `merino.ledger`. Receipts are signed outside the DB by `merino pg-sign` so the realm key never sits in a dump |
+| `sql/test.py` | Runs `merino.sql` + `pg-sign` against `vectors/` on a throwaway cluster |
 | `vectors/` | Conformance vectors; every implementation tests against them |
 | `tools/gen_vectors.py` | Regenerates `vectors/` from the Python engine |
 
@@ -23,4 +24,7 @@ cd python && python3 -m unittest discover -s tests
 python3 -m merino keygen --keys /etc/merino --realm liftcharge
 python3 -m merino serve --db /var/lib/merino/merino.db --media /var/lib/merino/media --keys /etc/merino
 python3 -m merino audit https://app.liftcharge.co/api/merino liftcharge
+python3 sql/test.py
+cd kotlin && ./gradlew -q vectors
+python3 -m merino pg-sign --keys /etc/merino --realm aether -- psql -h db -U merino_signer postgres
 ```

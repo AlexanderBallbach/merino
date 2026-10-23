@@ -211,7 +211,10 @@ auto-hide, `sys:retention`). `t` is receipt time at the realm granularity. Entry
 previous entry's hash (64 zeros for `seq` 1). The server signs each entry hash
 with its realm key — `Ed25519(realm_key, "merino-ledger/1\n" + entry_hash_bytes)` —
 and returns it as a **receipt**. `python3 -m merino audit URL REALM` walks a
-server's whole public ledger and checks every link and signature. The ledger is public
+server's whole public ledger and checks every link and signature. A Postgres
+server (`sql/merino.sql`) computes the chain in the inserting transaction but
+holds no key; `merino pg-sign` re-verifies the whole chain and only then signs,
+so a database dump cannot mint receipts. The ledger is public
 (hashes only), and so is its head. Anyone holding a report, its receipt and the
 ledger can check that the report is unaltered, was accepted at a given position,
 and — if missing from the public feed — was removed by a recorded action, not
