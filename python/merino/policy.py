@@ -44,7 +44,7 @@ def lc_body(kind, b):
     return None
 
 
-LIFTCHARGE = Realm("liftcharge", time_gran=5, body=lc_body,
+LIFTCHARGE = Realm("liftcharge", time_gran=5, body=lc_body, media_max=20_000_000,
                    media_days={"image/jpeg": 30, "image/png": 30, "video/mp4": 14},
                    min_prec={"report": 1, "path": 100, "polygon": 100})
 
