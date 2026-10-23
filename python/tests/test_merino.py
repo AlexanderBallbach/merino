@@ -260,13 +260,22 @@ class Server(ServerBase):
         self.assertEqual(self.srv.disclosures("liftcharge"), [])
         self.assertEqual(len(self.srv.query("liftcharge")), 1)
 
-    def test_presence_memory_town(self):
-        cell = self.srv.presence("liftcharge", "t" * 20, 44985072, -93214144)
-        self.assertTrue(geo.on_grid(*cell, 5000))
-        self.srv.presence("liftcharge", "u" * 20, 44985000, -93214000)
-        self.assertEqual(self.srv.presence_list("liftcharge"), [[cell[0], cell[1], 2]])
+    def test_presence_memory_town_mutual(self):
+        with self.assertRaises(envelope.Reject):            # a raw fix is refused, not snapped
+            self.srv.presence("liftcharge", "t" * 20, 44985072, -93214144)
+        cell = geo.snap(44985072, -93214144, 5000)
+        self.srv.presence("liftcharge", "t" * 20, *cell)
+        self.assertEqual(self.srv.presence_list("liftcharge", "v" * 20), [])   # not sharing: sees nothing
+        self.assertEqual(self.srv.presence_list("liftcharge", "t" * 20), [])   # only itself
+        self.clock.t += 60
+        self.srv.presence("liftcharge", "u" * 20, *cell)
+        self.assertEqual(self.srv.presence_list("liftcharge", "t" * 20), [[cell[0], cell[1], 1, 0]])
+        self.assertEqual(self.srv.presence_list("liftcharge", "u" * 20), [[cell[0], cell[1], 1, 60]])
+        self.srv.presence_stop("liftcharge", "u" * 20)
+        self.assertEqual(self.srv.presence_list("liftcharge", "t" * 20), [])
+        self.srv.presence("liftcharge", "u" * 20, *cell)
         self.clock.t += 16 * 60
-        self.assertEqual(self.srv.presence_list("liftcharge"), [])
+        self.assertEqual(self.srv.presence_list("liftcharge", "u" * 20), [])
         names = [r[0] for r in self.srv.c.execute("SELECT name FROM sqlite_master")]
         self.assertFalse(any("presence" in n for n in names))
 

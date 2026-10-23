@@ -53,6 +53,7 @@ class Server:
         ledger.schema(self.c)
         os.makedirs(media_dir, exist_ok=True)
         self._presence = {}
+        self._psecret = os.urandom(32)   # process lifetime, never written: tokens are unlinkable after a restart
 
     # ---- helpers ------------------------------------------------------------
     def now_min(self):
@@ -332,26 +333,40 @@ class Server:
         return ledger.rows(self.c, realm, start, limit=min(limit, 5000))
 
     # ---- presence (memory only) -------------------------------------------------------------
+    def _ptoken(self, realm, token):
+        if not isinstance(token, str) or not 16 <= len(token) <= 64:
+            raise Reject("presence", "token")
+        return hmac.new(self._psecret, ("%s:%s" % (realm, token)).encode(), hashlib.sha256).digest()[:16]
+
     def presence(self, realm, token, lat_e6, lon_e6):
-        """Opt-in live position. Kept only in memory, at town precision, for 15 minutes; token is a random per-session value."""
-        if not geo.valid(lat_e6, lon_e6) or not isinstance(token, str) or not 16 <= len(token) <= 64:
-            raise Reject("presence")
-        cell = geo.snap(lat_e6, lon_e6, geo.LEVELS["town"])
+        """Opt-in live position. The device sends a town cell centre (it never sends the fix); kept only in
+        memory, for 15 minutes after the last update; token is a random per-session value held in RAM too."""
+        if realm not in self.realms or not geo.valid(lat_e6, lon_e6) or not geo.on_grid(lat_e6, lon_e6, geo.LEVELS["town"]):
+            raise Reject("presence", "send a town cell centre")
+        k = self._ptoken(realm, token)
         with self.lock:
-            k = self.limiter._key("presence:%s:%s" % (realm, token))
-            self._presence[k] = (realm, cell, self.clock() + PRESENCE_TTL_S)
-        return cell
+            self._presence[k] = (realm, (lat_e6, lon_e6), self.clock())
+        return lat_e6, lon_e6
 
     def presence_stop(self, realm, token):
+        k = self._ptoken(realm, token)
         with self.lock:
-            self._presence.pop(self.limiter._key("presence:%s:%s" % (realm, token)), None)
+            self._presence.pop(k, None)
 
-    def presence_list(self, realm):
+    def presence_list(self, realm, token):
+        """Cells with spotters sharing now: [[lat, lon, count, age_s]]. Mutual: empty unless `token` is sharing
+        too, and the caller's own entry is left out."""
+        me = self._ptoken(realm, token)
         now, cells = self.clock(), {}
         with self.lock:
-            for k, (r, cell, exp) in list(self._presence.items()):
-                if exp < now:
+            for k, (r, cell, at) in list(self._presence.items()):
+                if at + PRESENCE_TTL_S < now:
                     del self._presence[k]
-                elif r == realm:
-                    cells[cell] = cells.get(cell, 0) + 1
-        return [[a, b, n] for (a, b), n in sorted(cells.items())]
+            if me not in self._presence or self._presence[me][0] != realm:
+                return []
+            for k, (r, cell, at) in self._presence.items():
+                if r == realm and k != me:
+                    n, age = cells.get(cell, (0, None))
+                    a = int(now - at)
+                    cells[cell] = (n + 1, a if age is None else min(age, a))
+        return [[a, b, n, age] for (a, b), (n, age) in sorted(cells.items())]

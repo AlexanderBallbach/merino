@@ -4,9 +4,9 @@
     PUT  /v1/media/<sha256>          raw cleaned bytes
     GET  /v1/media/<sha256>
     POST /v1/disclose                {"subject", "data", "sig"}
-    POST /v1/presence                {"realm", "token", "lat", "lon"} (or "stop": true)
+    POST /v1/presence                {"realm", "token", "lat", "lon"} town cell centre (or "stop": true)
     GET  /v1/<realm>/items?s=&w=&n=&e=&since=&kinds=
-    GET  /v1/<realm>/presence
+    GET  /v1/<realm>/presence?token=   (mutual: empty unless that token is sharing)
     GET  /v1/<realm>/head | /v1/<realm>/ledger?start= | /v1/<realm>/receipt/<hash>
     GET  /v1/item/<hash>
 """
@@ -113,7 +113,7 @@ def handler(server, prefix=""):
                     since = int(q["since"]) if "since" in q else None
                     self.send(200, {"items": server.query(realm, bbox, since, kinds, int(q.get("limit", 500)))})
                 elif what == "presence":
-                    self.send(200, {"cells": server.presence_list(realm)})
+                    self.send(200, {"cells": server.presence_list(realm, q.get("token"))})
                 elif what == "head":
                     self.send(200, server.head(realm))
                 elif what == "ledger":

@@ -234,7 +234,7 @@ the operator's name.
 | Flags | sha256(install id + envelope hash), so one install's flags on different reports are unlinkable | Raw install ids |
 | Accounts (opt-in) | HMAC of email / OAuth subject, report links the user chose | Plain emails used only for sign-in |
 | Disclosures (opt-in contact details for an agency) | Until revoked; never in a public response | Anything the user did not type |
-| Live presence (opt-in) | `town` cell, 15 minutes | History |
+| Live presence (opt-in) | `town` cell sent already snapped, in memory only, 15 minutes; visible only to others who are sharing | History, the fix itself |
 | Access logs | Method, path without query, status | Client IP, query strings |
 
 ## 10. Conformance
