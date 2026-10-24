@@ -321,7 +321,9 @@ class Server:
         it = self._item(h)
         if it is None:
             return None
-        return {"hash": h, "status": it["status"], "wire": json.loads(it["wire"]) if it["wire"] and it["status"] == "visible" else None}
+        marks = dict(self.c.execute("SELECT kind, COUNT(*) FROM m_marks WHERE subject=? GROUP BY kind", (h,)).fetchall())
+        return {"hash": h, "status": it["status"], "wire": json.loads(it["wire"]) if it["wire"] and it["status"] == "visible" else None,
+                "flags": marks.get("flag", 0), "confirms": marks.get("confirm", 0)}
 
     def receipt(self, realm, h):
         r = self.c.execute("SELECT seq FROM m_ledger WHERE realm=? AND subject=? ORDER BY seq", (realm, h)).fetchall()

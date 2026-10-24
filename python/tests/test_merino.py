@@ -211,7 +211,7 @@ class Server(ServerBase):
         other = envelope.build("liftcharge", "delete", os.urandom(32), self.t, ref=h)
         self.assertRaisesRegex(Reject, "ref", self.srv.submit, other)
         self.srv.submit(envelope.build("liftcharge", "delete", seed, self.t, ref=h))
-        self.assertEqual(self.srv.get(h), {"hash": h, "status": "deleted", "wire": None})
+        self.assertEqual(self.srv.get(h), {"hash": h, "status": "deleted", "wire": None, "flags": 0, "confirms": 0})
         row = self.srv.c.execute("SELECT wire, key FROM m_items WHERE hash=?", (h,)).fetchone()
         self.assertEqual(row, (None, ""))
         self.assertEqual([r["entry"]["kind"] for r in self.srv.receipt("liftcharge", h)], ["report", "delete"])
@@ -241,6 +241,7 @@ class Server(ServerBase):
         fh = hashlib.sha256(b"install-a" + h.encode()).hexdigest()
         self.srv.submit(envelope.build("liftcharge", "flag", os.urandom(32), self.t, body={"fh": fh}, ref=h))
         self.assertTrue(self.srv.submit(envelope.build("liftcharge", "flag", os.urandom(32), self.t, body={"fh": fh}, ref=h))["duplicate"])
+        self.assertEqual(self.srv.get(h)["flags"], 1)   # the author's own view ("Mine") sees the counts too
         for k in (b"b", b"c"):
             self.srv.submit(envelope.build("liftcharge", "flag", os.urandom(32), self.t,
                                            body={"fh": hashlib.sha256(k + h.encode()).hexdigest()}, ref=h))
