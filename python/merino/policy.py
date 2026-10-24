@@ -78,6 +78,6 @@ def ae_body(kind, b):
 
 
 AETHER = Realm("aether", time_gran=15, body=ae_body,
-               min_prec={"report": 1, "path": 100, "polygon": 100})
+               min_prec={"report": 1, "path": 1, "polygon": 100})   # paths are end-trimmed on the phone
 
 REALMS = {r.name: r for r in (LIFTCHARGE, AETHER)}
