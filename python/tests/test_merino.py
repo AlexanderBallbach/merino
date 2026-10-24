@@ -47,6 +47,28 @@ class Ed(unittest.TestCase):
 
 
 class Geo(unittest.TestCase):
+    def test_keyed(self):
+        r = random.Random(7)
+        k = bytes(range(32))
+        dl = []
+        for _ in range(4000):
+            la, lo = r.randint(-80_000_000, 80_000_000), r.randint(-179_000_000, 179_000_000)
+            for m in (100, 1000, 5000):
+                a, b = geo.keyed_snap(la, lo, m, k)
+                self.assertEqual((a, b), geo.keyed_snap(la, lo, m, k))           # same answer every time
+                self.assertLess(abs(a - la), geo.lat_step(m))                   # within one cell
+                if m == 1000:
+                    dl.append(a - la)
+        self.assertLess(abs(sum(dl) / len(dl)), geo.lat_step(1000) / 20)      # no one-way drift
+        self.assertNotEqual(geo.keyed_snap(1, 1, 1000, k), geo.keyed_snap(1, 1, 1000, bytes(32)))
+        g = geo.reduce_point(44985072, -93214144, 1000, key=k)
+        self.assertEqual(g["mode"], "keyed")
+        self.assertIsNone(geo.check_geo(g, 1000))
+        self.assertEqual(geo.check_geo(dict(g, mode="x"), 1), "mode")
+        self.assertNotIn("mode", geo.reduce_point(44985072, -93214144, 1, key=k))   # exact is exact
+        self.assertIsNotNone(geo.reduce_path([(44985072 + 2000 * i, -93214144, 1_790_000_000_000 + 60_000 * i, 5) for i in range(5)],
+                                             100, 15, trim_m=0, key=k))
+
     def test_snap_idempotent_random(self):
         r = random.Random(7)
         for _ in range(3000):
@@ -142,9 +164,9 @@ class ServerBase(unittest.TestCase):
         self.srv.c.close()
         self.tmp.cleanup()
 
-    def report(self, seed=None, media_=(), ref=None, typ="Hail", t=None):
+    def report(self, seed=None, media_=(), ref=None, typ="Hail", t=None, at=(44985072, -93214144), m=1000, key=None):
         seed = seed or os.urandom(32)
-        g = geo.reduce_point(44985072, -93214144, 1000)
+        g = geo.reduce_point(at[0], at[1], m, key=key)
         return seed, envelope.build("liftcharge", "report", seed, self.t if t is None else t, g,
                                     {"type": typ, "magnitude": "1.00 in", "notes": ""}, media_, ref)
 
@@ -202,6 +224,16 @@ class Server(ServerBase):
         self.assertEqual([i["hash"] for i in self.srv.query("liftcharge")], [h2])
         _, w3 = self.report(ref=h2, typ="Lightning")   # different key
         self.assertRaises(Reject, self.srv.submit, w3)
+        _, w4 = self.report(seed=seed, ref=h2, at=(45985072, -93214144))   # what is placed is never moved
+        with self.assertRaises(Reject) as cm:
+            self.srv.submit(w4)
+        self.assertEqual(cm.exception.detail, "placed")
+
+    def test_keyed_accepted_as_declared(self):
+        k = os.urandom(32)
+        _, w = self.report(key=k)
+        self.assertFalse(self.srv.submit(w)["duplicate"])
+        self.assertEqual(len(self.srv.query("liftcharge")), 1)
 
     def test_flags_hide_and_dedupe(self):
         _, w = self.report()

@@ -1,5 +1,7 @@
 package org.merino
 
+import javax.crypto.Mac
+import javax.crypto.spec.SecretKeySpec
 import kotlin.math.asin
 import kotlin.math.cos
 import kotlin.math.min
@@ -50,6 +52,40 @@ object Geo {
 
     fun onGrid(lat: Long, lon: Long, m: Int) = snap(lat, lon, m) == (lat to lon)
 
+    private fun h64(key: ByteArray, vararg parts: Any): Pair<Long, Long> {
+        val mac = Mac.getInstance("HmacSHA256").apply { init(SecretKeySpec(key, "HmacSHA256")) }
+        val d = mac.doFinal(parts.joinToString("|").toByteArray())
+        fun u(o: Int) = (0 until 8).fold(0L) { a, i -> (a shl 8) or (d[o + i].toLong() and 0xff) }
+        return u(0) to u(8)
+    }
+
+    /**
+     * SPEC 4.6. A point in a cell of the same size, but on a grid shifted by a device secret and at a keyed spot
+     * inside the cell rather than its centre: no visible grid, no one-way drift, and the same answer every time.
+     */
+    fun keyedSnap(lat: Long, lon: Long, m: Int, key: ByteArray): Pair<Long, Long> {
+        val ls = latStep(m)
+        val (oa, ob) = h64(key, "merino-keyed-offset", m)
+        val oy = java.lang.Long.remainderUnsigned(oa, ls)
+        val i = Math.floorDiv(lat - oy, ls)
+        val s = i * ls + oy
+        val band = min(89L, Math.abs(clamp(s + ls / 2, -LAT_MAX, LAT_MAX)) / 1_000_000).toInt()
+        val lo = min(360_000_000L, ls * LON_MULT[band] / 1000)
+        val ox = java.lang.Long.remainderUnsigned(ob, lo)
+        val j = Math.floorDiv(lon + LON_MAX - ox, lo)
+        val w = j * lo + ox
+        val (pa, pb) = h64(key, "merino-keyed-point", m, i, j)
+        return clamp(s + java.lang.Long.remainderUnsigned(pa, ls), -LAT_MAX, LAT_MAX) to
+            clamp(w + java.lang.Long.remainderUnsigned(pb, lo) - LON_MAX, -LON_MAX, LON_MAX)
+    }
+
+    /** Exact (1 m) has nothing to hide, so it always uses the plain grid. */
+    private fun snapper(m: Int, key: ByteArray?): (Long, Long) -> Pair<Long, Long> =
+        if (key != null && m > 1) { a, b -> keyedSnap(a, b, m, key) } else { a, b -> snap(a, b, m) }
+
+    private fun withMode(g: Map<String, Any>, m: Int, key: ByteArray?) =
+        if (key != null && m > 1) g + ("mode" to "keyed") else g
+
     fun distM(aLat: Long, aLon: Long, bLat: Long, bLon: Long): Double {
         val la1 = Math.toRadians(aLat / 1e6); val lo1 = Math.toRadians(aLon / 1e6)
         val la2 = Math.toRadians(bLat / 1e6); val lo2 = Math.toRadians(bLon / 1e6)
@@ -62,52 +98,54 @@ object Geo {
         zones.any { distM(lat, lon, it.lat, it.lon) <= it.radiusM + margin }
 
     /** Snap a report location. Inside a privacy zone (+500 m) the cell is raised to at least TOWN. */
-    fun reducePoint(lat: Long, lon: Long, m: Int, zones: List<Zone> = emptyList()): Map<String, Any> {
+    fun reducePoint(lat: Long, lon: Long, m: Int, zones: List<Zone> = emptyList(), key: ByteArray? = null): Map<String, Any> {
         var cell = m
         if (zones.isNotEmpty() && inZone(lat, lon, zones, ZONE_MARGIN_M)) {
             var need = maxOf(m, TOWN)
             zones.filter { distM(lat, lon, it.lat, it.lon) <= it.radiusM + ZONE_MARGIN_M }.forEach { need = maxOf(need, 2 * it.radiusM) }
             cell = LEVELS.firstOrNull { it >= need } ?: REGION
         }
-        val (a, b) = snap(lat, lon, cell)
-        return mapOf("type" to "point", "p" to listOf(a, b), "prec" to cell)
+        val (a, b) = snapper(cell, key)(lat, lon)
+        return withMode(mapOf("type" to "point", "p" to listOf(a, b), "prec" to cell), cell, key)
     }
 
     /** SPEC 4.4. Returns null when nothing worth uploading is left. */
     fun reducePath(points: List<Fix>, m: Int, t0GranularityMin: Int, zones: List<Zone> = emptyList(),
-                   keepTime: Boolean = true, trimM: Int = PATH_TRIM_M): Map<String, Any>? {
+                   keepTime: Boolean = true, trimM: Int = PATH_TRIM_M, key: ByteArray? = null): Map<String, Any>? {
         var pts = points.filter { it.accuracyM == null || it.accuracyM <= PATH_MAX_ACCURACY_M }
         if (zones.isNotEmpty()) pts = pts.filter { !inZone(it.lat, it.lon, zones) }
         if (pts.size < 2) return null
         val cum = DoubleArray(pts.size)
         for (i in 1 until pts.size) cum[i] = cum[i - 1] + distM(pts[i - 1].lat, pts[i - 1].lon, pts[i].lat, pts[i].lon)
         val total = cum.last()
-        if (total <= 2 * trimM) return null
+        if (trimM > 0 && total <= 2 * trimM) return null
         pts = pts.filterIndexed { i, _ -> cum[i] >= trimM && cum[i] <= total - trimM }
         if (pts.size < 2) return null
         val tFirst = pts[0].timeMs
+        val sn = snapper(m, key)
         val out = ArrayList<List<Long>>()
         for (p in pts) {
-            val (a, b) = snap(p.lat, p.lon, m)
+            val (a, b) = sn(p.lat, p.lon)
             val dt = if (keepTime) (Math.floorDiv(p.timeMs - tFirst, 1000L) + 30).let { Math.floorDiv(it, 60L) * 60 } else 0L
             if (out.isNotEmpty() && out.last()[0] == a && out.last()[1] == b) continue
             out.add(listOf(a, b, dt))
         }
         if (out.size < 2) return null
         val t0 = if (keepTime) Math.floorDiv(Math.floorDiv(tFirst, 60_000L), t0GranularityMin.toLong()) * t0GranularityMin else 0L
-        return mapOf("type" to "path", "p" to out.take(PATH_MAX), "prec" to m, "t0" to t0)
+        return withMode(mapOf("type" to "path", "p" to out.take(PATH_MAX), "prec" to m, "t0" to t0), m, key)
     }
 
     /** SPEC 4.5. Returns null for a degenerate polygon. */
-    fun reducePolygon(vertices: List<Pair<Long, Long>>, m: Int): Map<String, Any>? {
+    fun reducePolygon(vertices: List<Pair<Long, Long>>, m: Int, key: ByteArray? = null): Map<String, Any>? {
+        val sn = snapper(m, key)
         val out = ArrayList<List<Long>>()
         for ((la, lo) in vertices) {
-            val (a, b) = snap(la, lo, m)
+            val (a, b) = sn(la, lo)
             val s = listOf(a, b)
             if (out.isEmpty() || out.last() != s) out.add(s)
         }
         if (out.size > 1 && out.first() == out.last()) out.removeAt(out.size - 1)
         if (out.toSet().size < 3 || out.size > POLY_MAX) return null
-        return mapOf("type" to "polygon", "p" to out, "prec" to m)
+        return withMode(mapOf("type" to "polygon", "p" to out, "prec" to m), m, key)
     }
 }

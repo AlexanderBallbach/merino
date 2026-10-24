@@ -129,3 +129,15 @@ if mp4 and os.path.exists(mp4):
                    "sha256": hashlib.sha256(clean).hexdigest()})
 dump("media", mv)
 print("ok", len(snaps), "snaps", len(paths), "paths")
+
+# SPEC 4.6 keyed rounding. Its own generator so adding it left every earlier vector unchanged.
+rk = random.Random(20261024)
+keyed = []
+for k in range(3):
+    key = bytes(rk.getrandbits(8) for _ in range(32))
+    rows = []
+    for la, lo in edge + [(rk.randint(-90_000_000, 90_000_000), rk.randint(-180_000_000, 180_000_000)) for _ in range(40)]:
+        for m in (100, 1000, 5000, 25000):
+            rows.append([la, lo, m] + list(geo.keyed_snap(la, lo, m, key)))
+    keyed.append({"key": key.hex(), "cols": ["lat", "lon", "m", "lat_k", "lon_k"], "rows": rows})
+dump("keyed", keyed)

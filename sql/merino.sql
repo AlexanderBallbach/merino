@@ -83,10 +83,19 @@ declare
   la bigint; lo bigint; dt bigint;
   last bigint := -1;
   n int;
+  keyed boolean := false;
 begin
   if jsonb_typeof(g) is distinct from 'object' or m is null
      or m not in (1, 100, 1000, 5000, 25000) or m < min_prec then
     return 'precision';
+  end if;
+  -- SPEC 4.6: a keyed geo sits on a grid only its device knows; its declared precision is taken as given.
+  if g ? 'mode' then
+    if g ->> 'mode' is distinct from 'keyed' or jsonb_typeof(g -> 'mode') <> 'string' or m = 1 then
+      return 'mode';
+    end if;
+    keyed := true;
+    g := g - 'mode';
   end if;
   select array_agg(k order by k) into keys from jsonb_object_keys(g) k;
   n := case when jsonb_typeof(pts) = 'array' then jsonb_array_length(pts) else -1 end;
@@ -96,7 +105,7 @@ begin
     if keys <> array['p','prec','type'] or n <> 2 or not merino.valid_pt(la, lo) then
       return 'point';
     end if;
-    return case when merino.on_grid(la, lo, m::int) then null else 'off_grid' end;
+    return case when keyed or merino.on_grid(la, lo, m::int) then null else 'off_grid' end;
 
   elsif t = 'path' then
     if keys <> array['p','prec','t0','type'] or merino.int_of(g -> 't0') is null
@@ -110,7 +119,7 @@ begin
         return 'path';
       end if;
       last := dt;
-      if not merino.on_grid(la, lo, m::int) then return 'off_grid'; end if;
+      if not keyed and not merino.on_grid(la, lo, m::int) then return 'off_grid'; end if;
     end loop;
     return null;
 
@@ -124,7 +133,7 @@ begin
          or not merino.valid_pt(la, lo) then
         return 'polygon';
       end if;
-      if not merino.on_grid(la, lo, m::int) then return 'off_grid'; end if;
+      if not keyed and not merino.on_grid(la, lo, m::int) then return 'off_grid'; end if;
     end loop;
     return null;
   end if;

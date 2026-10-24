@@ -45,6 +45,14 @@ def cases():
             yield "%s%d_coarse" % (name, i), "merino.check_geo(%s, 25001) = 'precision'" % jl(g)
     yield "type", "merino.check_geo('{\"type\":\"blob\",\"p\":[],\"prec\":100}', 1) = 'type'"
     yield "float", "merino.check_geo('{\"type\":\"point\",\"p\":[0.5,0],\"prec\":1}', 1) = 'point'"
+    for i, r in enumerate(V("keyed")[0]["rows"][:20]):
+        if r[2] == 1:
+            continue
+        g = {"type": "point", "p": [r[3], r[4]], "prec": r[2], "mode": "keyed"}
+        yield "keyed%d" % i, "merino.check_geo(%s, 1) is null" % jl(g)
+        yield "keyed%d_floor" % i, "merino.check_geo(%s, %d) = 'precision'" % (jl(g), r[2] + 1)
+    yield "keyed_exact", "merino.check_geo('{\"type\":\"point\",\"p\":[4,4],\"prec\":1,\"mode\":\"keyed\"}', 1) = 'mode'"
+    yield "mode_other", "merino.check_geo('{\"type\":\"point\",\"p\":[0,0],\"prec\":100,\"mode\":\"x\"}', 1) = 'mode'"
     yield "extra", "merino.check_geo('{\"type\":\"point\",\"p\":[4,4],\"prec\":1,\"x\":1}', 1) = 'point'"
 
 

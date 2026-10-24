@@ -39,6 +39,9 @@ class Vectors(unittest.TestCase):
             self.assertEqual(geo.reduce_polygon([tuple(v) for v in c["vertices"]], c["m"]), c["out"])
         for c in load("points"):
             self.assertEqual(geo.reduce_point(c["lat"], c["lon"], c["m"], c["zones"]), c["out"])
+        for c in load("keyed"):
+            for la, lo, m, a, b in c["rows"]:
+                self.assertEqual(geo.keyed_snap(la, lo, m, bytes.fromhex(c["key"])), (a, b))
 
     def test_envelope_ledger(self):
         e = load("envelope")

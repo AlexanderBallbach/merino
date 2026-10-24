@@ -11,7 +11,7 @@ subpoenas; avoid data brokers. See `SPEC.md`.
 
 | Dir | What |
 |---|---|
-| `SPEC.md` | The protocol: c14n, grid, paths, time, media, envelopes, ledger, retention |
+| `SPEC.md` | The protocol: c14n, grid, keyed rounding, paths, placed-is-immutable, time, media, envelopes, ledger, retention |
 | `python/merino` | Reference engine + SQLite server + stdlib HTTP service + CLI (no dependencies; uses `cryptography` for speed if present) |
 | `kotlin/` | Pure-Kotlin client (JVM/Android): reduction, media cleaning, signing |
 | `sql/merino.sql` | Postgres (>= 13) port: `merino.snap`, `merino.check_geo`, `merino.c14n`, append-only `merino.ledger`. Receipts are signed outside the DB by `merino pg-sign` so the realm key never sits in a dump |

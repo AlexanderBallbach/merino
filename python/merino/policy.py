@@ -46,7 +46,8 @@ def lc_body(kind, b):
 
 LIFTCHARGE = Realm("liftcharge", time_gran=5, body=lc_body, media_max=20_000_000,
                    media_days={"image/jpeg": 30, "image/png": 30, "video/mp4": 14},
-                   min_prec={"report": 1, "path": 100, "polygon": 100})
+                   min_prec={"report": 1, "path": 1, "polygon": 1},
+                   retention_days=90)
 
 
 # --- Aether Guild Atlas / Field Companion ----------------------------------------
@@ -78,6 +79,6 @@ def ae_body(kind, b):
 
 
 AETHER = Realm("aether", time_gran=15, body=ae_body,
-               min_prec={"report": 1, "path": 1, "polygon": 100})   # paths are end-trimmed on the phone
+               min_prec={"report": 1, "path": 1, "polygon": 1})   # exact or coarse is the user's choice
 
 REALMS = {r.name: r for r in (LIFTCHARGE, AETHER)}

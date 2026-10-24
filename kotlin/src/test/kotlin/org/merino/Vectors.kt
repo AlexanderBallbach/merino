@@ -95,6 +95,13 @@ fun main(args: Array<String>) {
         val got = Geo.reducePolygon((c["vertices"] as List<List<Any?>>).map { L(it[0]) to L(it[1]) }, I(c["m"]))
         check(norm(got) == norm(c["out"])) { "polygon" }
     }
+    for (c in load("keyed") as List<Map<String, Any?>>) {
+        val key = Envelope.unhex(c["key"] as String)
+        for (r in c["rows"] as List<List<Any?>>) {
+            val got = Geo.keyedSnap(L(r[0]), L(r[1]), I(r[2]), key)
+            check(got == (L(r[3]) to L(r[4]))) { "keyed $r -> $got" }
+        }
+    }
     for (c in load("points") as List<Map<String, Any?>>) {
         val got = Geo.reducePoint(L(c["lat"]), L(c["lon"]), I(c["m"]), zones(c["zones"]))
         check(norm(got) == norm(c["out"])) { "point ${c["lat"]},${c["lon"]}: ${norm(got)} vs ${norm(c["out"])}" }

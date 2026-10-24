@@ -140,6 +140,8 @@ class Server:
             if target is not None:      # supersede (edit): same key, same kind, still live
                 if target["key"] != env["key"] or target["kind"] != kind or target["status"] not in ("visible", "hidden"):
                     raise Reject("ref", "supersede")
+                if open_wire(json.loads(target["wire"]))[0]["geo"] != env["geo"]:
+                    raise Reject("geo", "placed")   # SPEC 4.7: what is placed is never moved; delete and place anew
                 status = target["status"]
                 self.c.execute("UPDATE m_items SET status='superseded' WHERE hash=?", (target["hash"],))
                 self._drop_media(target["hash"])

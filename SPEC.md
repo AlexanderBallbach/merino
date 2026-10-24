@@ -60,7 +60,7 @@ implementation:
 
 | Level | Cell | Typical use |
 |---|---|---|
-| `exact` | ~1 m | Only when the user explicitly picks it, every time |
+| `exact` | ~1 m | When the user picks it. Exact or coarse is always the user's choice; a realm may set a floor but the shipped realms do not |
 | `block` | 100 m | Paths, phenomena the user is not standing at |
 | `neighborhood` | 1 km | **Default for reports** |
 | `town` | 5 km | Default inside a privacy zone; live presence |
@@ -88,7 +88,10 @@ never narrower east-west than it is north-south. A table rather than a runtime
 Properties every implementation must keep: a cell centre snaps to itself
 (so a server can check `snap(p) == p` to confirm a point is reduced), and the
 same input always gives the same output (no randomness — random jitter is
-averaged away by repeated reports, a fixed grid is not).
+averaged away by repeated reports, a fixed grid is not). Snapping goes to the
+cell **centre**, never to an edge: truncating digits moves every point the same
+way (south-west in the northern/eastern hemispheres), a drift anyone can predict
+and undo on average. Centre snapping has zero mean error.
 
 ### 4.3 Privacy zones (device only)
 
@@ -102,7 +105,8 @@ Before upload, in order:
 1. Drop points with a GPS accuracy worse than 100 m.
 2. Drop points inside privacy zones.
 3. Trim the first and last 300 m of travelled distance (where a walk starts and
-   ends is usually where someone lives or parked).
+   ends is usually where someone lives or parked). On by default; the user may
+   turn it off (`trim_m = 0`), in which case a short path is not dropped for it.
 4. Snap each point to the path precision (default `block`).
 5. Drop consecutive duplicates.
 6. Time: absolute timestamps are replaced by seconds since the first kept
@@ -115,6 +119,50 @@ A path that has fewer than 2 points after this is not uploaded.
 
 Vertices snapped to the polygon precision (default `block`), consecutive
 duplicates removed, at least 3 distinct vertices, at most 2,000.
+
+### 4.6 Keyed rounding (optional)
+
+The public grid has one weakness: everyone knows where its cells are, so a
+reported point says "somewhere in *this* known square", and a map of many
+reports shows the grid. A user can choose **keyed rounding** instead. Each
+device holds a 32-byte secret `k` (random, stored on the device and in its
+settings backup, never uploaded). For a level `m > 1`:
+
+```
+H(parts...)  = HMAC-SHA256(k, "|".join(parts)); a = first 8 bytes, b = next 8 (big-endian unsigned)
+(oa, ob)     = H("merino-keyed-offset", m)
+oy           = oa mod lat_step
+i            = floor((lat - oy) / lat_step);   s = i * lat_step + oy
+band         = min(89, abs(clamp(s + lat_step // 2)) // 1_000_000)
+lon_step     = min(360_000_000, lat_step * LON_MULT[band] // 1000)
+ox           = ob mod lon_step
+j            = floor((lon + 180_000_000 - ox) / lon_step);   w = j * lon_step + ox
+(pa, pb)     = H("merino-keyed-point", m, i, j)
+lat_k        = clamp(s + pa mod lat_step);   lon_k = clamp(w + pb mod lon_step - 180_000_000)
+```
+
+The grid is shifted by a secret offset, and the output is a secret but fixed
+spot inside the cell instead of its centre. So:
+- the result is always in the same cell size the user chose (never further);
+- it is deterministic, so repeated reports from one place give one point and
+  cannot be averaged toward the truth;
+- across many places the error has zero mean (no direction to correct for);
+- nobody without `k` can tell where the cell edges are.
+
+`exact` is never keyed. A keyed geo carries `"mode": "keyed"`; a server checks
+its declared `prec` against the realm floor but cannot check the grid, and
+takes the precision as declared. Limits: changing the key, or reporting the
+same place both keyed and plain, gives two different points for one place and
+narrows it down — the key must survive a reinstall, and the setting is per
+device, not per report.
+
+### 4.7 What is placed is not moved
+
+Once a report, path or polygon is accepted its geometry never changes — not by
+the server (no re-snapping, no later coarsening, no backfills) and not by a
+supersede: a supersede whose `geo` differs from its target's is rejected
+(`geo`/`placed`). Text, status and media may be edited; to move something,
+delete it and place it again, which leaves both facts in the ledger.
 
 ## 5. Time reduction
 
@@ -157,7 +205,8 @@ check the hash and then check the bytes are clean; it never rewrites them
   plus `t0`), `polygon` (`p` = `[[lat, lon], ...]`).
 - `delete`, `flag` and `confirm` carry `ref` (the target's envelope hash) and no `geo`.
   A `report`/`path`/`polygon` may also carry `ref`: it **supersedes** (edits) the
-  target, and must be signed by the target's key.
+  target, must be signed by the target's key, and must carry the target's exact
+  `geo` (4.7).
 - `delete` body may be `{"scope": "disclosure"}` to revoke only a disclosure.
 - `flag` / `confirm` body is `{"fh": sha256(install_secret ‖ target hash)}`,
   computed on the device, so the server can de-duplicate one install's marks on
