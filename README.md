@@ -39,3 +39,10 @@ License: [Hippocratic License 3.0 (HL3-FULL)](LICENSE). Free to use, modify and
 share, but not for the human-rights-violating uses it lists (including mass
 surveillance, which is the opposite of what Merino is for). This is an
 *ethical-source* license: it is not OSI-approved open source.
+
+**Agencies:** weather, emergency-management and research agencies that want to
+self-host Merino but are blocked by an HL3 clause (for example the law
+enforcement or military modules) may request a written exception from the
+licensor; open an issue or contact the maintainer. Reading Merino's public
+feed or ledger, or receiving reports from a Merino-based app, is not
+"use of the Software" and needs no license.
