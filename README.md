@@ -11,6 +11,9 @@ subpoenas; avoid data brokers. See `SPEC.md`.
 
 | Dir | What |
 |---|---|
+| `docs/ARCHITECTURE.md` | **Start here for the deployed system**: where data lives (device / SQLite / Postgres / keys), tables, flows, ledger, retention, backups, threat-model mapping |
+| `docs/OPERATIONS.md` | Runbook: deploy, systemd units, timers, audit, moderation, restore, key custody |
+| `docs/INTEGRATING.md` | Adding a realm, the Postgres ledger layer, vendoring the Kotlin client, conformance |
 | `SPEC.md` | The protocol: c14n, grid, keyed rounding, paths, placed-is-immutable, time, media, envelopes, ledger, retention |
 | `python/merino` | Reference engine + SQLite server + stdlib HTTP service + CLI (no dependencies; uses `cryptography` for speed if present) |
 | `kotlin/` | Pure-Kotlin client (JVM/Android): reduction, media cleaning, signing |
@@ -20,11 +23,15 @@ subpoenas; avoid data brokers. See `SPEC.md`.
 | `tools/gen_vectors.py` | Regenerates `vectors/` from the Python engine |
 
 ```
-cd python && python3 -m unittest discover -s tests
+cd python && python3 -m unittest discover -s tests   # run from python/
 python3 -m merino keygen --keys /etc/merino --realm liftcharge
 python3 -m merino serve --db /var/lib/merino/merino.db --media /var/lib/merino/media --keys /etc/merino
-python3 -m merino audit https://app.liftcharge.co/api/merino liftcharge
+python3 -m merino audit https://app.liftcharge.co/api/merino liftcharge --ipv4
 python3 sql/test.py
 cd kotlin && ./gradlew -q vectors
 python3 -m merino pg-sign --keys /etc/merino --realm aether -- psql -h db -U merino_signer postgres
 ```
+
+Status: engine 0.1. Live for the `liftcharge` realm (SQLite) and the `aether`
+ledger layer (Postgres). No license has been chosen yet; all rights reserved
+until the owner picks one.

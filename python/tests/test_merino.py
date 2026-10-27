@@ -368,6 +368,31 @@ class Http(ServerBase):
             httpd.shutdown()
             httpd.server_close()
 
+    def test_audit_cli(self):
+        import contextlib
+        import io as _io
+        import socket
+        from http.server import ThreadingHTTPServer
+        from merino import service
+        from merino.__main__ import main
+        httpd = ThreadingHTTPServer(("127.0.0.1", 0), service.handler(self.srv, "/api/merino"))
+        threading.Thread(target=httpd.serve_forever, daemon=True).start()
+        base = "http://127.0.0.1:%d/api/merino" % httpd.server_port
+        gai = socket.getaddrinfo
+        try:
+            for _ in range(2):
+                _, w = self.report()
+                self.srv.submit(w)
+            out = _io.StringIO()
+            with contextlib.redirect_stdout(out):
+                rc = main(["audit", base, "liftcharge", "--ipv4"])
+            self.assertEqual(rc, 0)
+            self.assertIn("ok 2 entries", out.getvalue())
+        finally:
+            socket.getaddrinfo = gai
+            httpd.shutdown()
+            httpd.server_close()
+
 
 if __name__ == "__main__":
     unittest.main()

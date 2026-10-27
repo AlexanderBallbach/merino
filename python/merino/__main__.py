@@ -4,7 +4,8 @@
     python3 -m merino keygen  --keys K --realm R          # creates K/R.seed (0600) if missing, prints the public key
     python3 -m merino purge   --db D --media M --keys K   # retention; run daily from a timer
     python3 -m merino moderate --db D --media M --keys K HASH hide|unhide|delete OPERATOR
-    python3 -m merino audit   URL REALM                   # fetch a server's ledger and check every link + signature
+    python3 -m merino audit   URL REALM [--ipv4]          # fetch a server's ledger and check every link + signature
+                                                          # (--ipv4: hosts with IPv6 but no v6 route hang otherwise)
     python3 -m merino pg-sign --keys K --realm R -- PSQL_ARGS...
                                                           # sign merino.ledger rows in Postgres (sql/merino.sql);
                                                           # the realm key never enters the database
@@ -56,6 +57,7 @@ def main(argv=None):
     au = sub.add_parser("audit")
     au.add_argument("url")
     au.add_argument("realm")
+    au.add_argument("--ipv4", action="store_true", help="resolve the server to IPv4 only (hosts with IPv6 but no route to it hang)")
     pg = sub.add_parser("pg-sign")
     pg.add_argument("--keys", required=True)
     pg.add_argument("--realm", required=True)
@@ -78,10 +80,18 @@ def main(argv=None):
         print(json.dumps(server(a).moderate(a.hash, a.action, a.operator)))
     elif a.cmd == "audit":
         base = a.url.rstrip("/")
-        head = json.load(urllib.request.urlopen("%s/v1/%s/head" % (base, a.realm)))
+        if a.ipv4:
+            import socket
+            _gai = socket.getaddrinfo
+            socket.getaddrinfo = lambda h, p, f=0, *r, **k: _gai(h, p, socket.AF_INET, *r, **k)
+
+        def fetch(url):   # a named User-Agent: CDNs (Cloudflare) answer the default "Python-urllib" with 403
+            req = urllib.request.Request(url, headers={"User-Agent": "merino-audit/1"})
+            return json.load(urllib.request.urlopen(req, timeout=30))
+        head = fetch("%s/v1/%s/head" % (base, a.realm))
         pub, start, prev, n = unb64u(head["pub"]), 1, ledger.ZERO, 0
         while True:
-            rows = json.load(urllib.request.urlopen("%s/v1/%s/ledger?start=%d" % (base, a.realm, start)))["entries"]
+            rows = fetch("%s/v1/%s/ledger?start=%d" % (base, a.realm, start))["entries"]
             if not rows:
                 break
             if rows[0]["entry"]["seq"] != start or not ledger.verify_chain(pub, rows, prev):

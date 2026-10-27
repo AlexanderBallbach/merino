@@ -2,3 +2,12 @@ __pycache__/
 *.pyc
 kotlin/build/
 kotlin/.gradle/
+*.seed
+*.hmac
+*.key
+*.pem
+.env
+VAULTWARDEN-IMPORT.txt
+*.db
+*.db-wal
+*.db-shm
