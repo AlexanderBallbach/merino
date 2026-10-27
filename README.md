@@ -33,5 +33,9 @@ python3 -m merino pg-sign --keys /etc/merino --realm aether -- psql -h db -U mer
 ```
 
 Status: engine 0.1. Live for the `liftcharge` realm (SQLite) and the `aether`
-ledger layer (Postgres). No license has been chosen yet; all rights reserved
-until the owner picks one.
+ledger layer (Postgres).
+
+License: [Hippocratic License 3.0 (HL3-FULL)](LICENSE). Free to use, modify and
+share, but not for the human-rights-violating uses it lists (including mass
+surveillance, which is the opposite of what Merino is for). This is an
+*ethical-source* license: it is not OSI-approved open source.
